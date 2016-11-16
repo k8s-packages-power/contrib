@@ -62,10 +62,9 @@ apt-get update && apt-get install --no-install-recommends -y \
   zlib1g-dev \
   libaio1 \
   libaio-dev \
-  luajit \
   openssl \
-  libluajit-5.1 \
-  libluajit-5.1-dev \
+  liblua5.1-0-dev \
+  liblua5.1-0 \
   linux-headers-generic || exit 1
 
 # download, verify and extract the source files
@@ -120,6 +119,9 @@ echo "Applying tls nginx patches..."
 patch -p1 < $BUILD_PATH/nginx__dynamic_tls_records.patch
 patch -p1 < $BUILD_PATH/nginx_1_9_15_http2_spdy.patch 
 
+NO_WARNING_CHECKS=yes
+export CFLAGS=""	
+
 ./configure \
   --prefix=/usr/share/nginx \
   --conf-path=/etc/nginx/nginx.conf \
@@ -149,15 +151,11 @@ patch -p1 < $BUILD_PATH/nginx_1_9_15_http2_spdy.patch
   --with-stream \
   --with-stream_ssl_module \
   --with-threads \
-  --with-file-aio \
   --without-mail_pop3_module \
   --without-mail_smtp_module \
   --without-mail_imap_module \
   --without-http_uwsgi_module \
   --without-http_scgi_module \
-  --with-cc-opt='-O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector --param=ssp-buffer-size=4 -m64 -mtune=generic' \
-  --add-module="$BUILD_PATH/ngx_devel_kit-$NDK_VERSION" \
-  --add-module="$BUILD_PATH/set-misc-nginx-module-$SETMISC_VERSION" \
   --add-module="$BUILD_PATH/nginx-module-vts-$VTS_VERSION" \
   --add-module="$BUILD_PATH/lua-nginx-module-$LUA_VERSION" \
   --add-module="$BUILD_PATH/headers-more-nginx-module-$MORE_HEADERS_VERSION" \
@@ -165,19 +163,20 @@ patch -p1 < $BUILD_PATH/nginx_1_9_15_http2_spdy.patch
   --add-module="$BUILD_PATH/nginx-http-auth-digest-$NGINX_DIGEST_AUTH" \
   --add-module="$BUILD_PATH/ngx_http_substitutions_filter_module-$NGINX_SUBSTITUTIONS" \
   --add-module="$BUILD_PATH/lua-upstream-nginx-module-$LUA_UPSTREAM_VERSION" || exit 1 \
-  && make || exit 1 \
+  && make LUAINC==-I/usr/include/lua5.1 || exit 1 \
   && make install || exit 1
 
 echo "Installing CJSON module"
-cd "$BUILD_PATH/lua-cjson-$LUA_CJSON_VERSION"
-make LUA_INCLUDE_DIR=/usr/include/luajit-2.0 && make install
+#cd "$BUILD_PATH/lua-cjson-$LUA_CJSON_VERSION"
+#make LUAINC=/usr/include/lua5.1/ LUA_INCLUDE_DIR=/usr/include/luajit-2.0 && make install
 
 echo "Installing lua-resty-http module"
 # copy lua module
-cd "$BUILD_PATH/lua-resty-http-$LUA_RESTY_HTTP_VERSION"
-sed -i 's/resty.http_headers/http_headers/' $BUILD_PATH/lua-resty-http-$LUA_RESTY_HTTP_VERSION/lib/resty/http.lua
-cp $BUILD_PATH/lua-resty-http-$LUA_RESTY_HTTP_VERSION/lib/resty/http.lua /usr/local/lib/lua/5.1
-cp $BUILD_PATH/lua-resty-http-$LUA_RESTY_HTTP_VERSION/lib/resty/http_headers.lua /usr/local/lib/lua/5.1
+#sudo mkdir /usr/local/lib/lua/5.1
+#cd "$BUILD_PATH/lua-resty-http-$LUA_RESTY_HTTP_VERSION"
+#sed -i 's/resty.http_headers/http_headers/' $BUILD_PATH/lua-resty-http-$LUA_RESTY_HTTP_VERSION/lib/resty/http.lua
+#cp $BUILD_PATH/lua-resty-http-$LUA_RESTY_HTTP_VERSION/lib/resty/http.lua /usr/local/lib/lua/5.1
+#cp $BUILD_PATH/lua-resty-http-$LUA_RESTY_HTTP_VERSION/lib/resty/http_headers.lua /usr/local/lib/lua/5.1
 
 echo "Cleaning..."
 
@@ -191,10 +190,9 @@ apt-mark unmarkauto \
   zlib1g \
   libaio1 \
   luajit \
-  libluajit-5.1-2 \
   xz-utils \
   geoip-bin \
-  openssl
+  openssl \
 
 apt-get remove -y --purge \
   build-essential \
@@ -205,7 +203,6 @@ apt-get remove -y --purge \
   libssl-dev \
   zlib1g-dev \
   libaio-dev \
-  libluajit-5.1-dev \
   linux-libc-dev \
   perl-modules-5.22 \
   linux-headers-generic
